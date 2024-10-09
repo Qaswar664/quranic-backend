@@ -22,6 +22,7 @@ const authenticateToken = require("../middlewares/authenticateToken.js");
 const { addStudentPlan } = require("../controllers/studentPlanController.js");
 const { sendInvite, getSentInvites, getReceivedInvites, updateInviteStatus } = require("../controllers/inviteController.js");
 const { sendMessage, getMessages } = require("../controllers/MessageController.js");
+const { login } = require("../controllers/tutor_controller.js");
 
 
 const router = express.Router();
@@ -40,7 +41,8 @@ const upload = multer({ storage: storage });
 // Student Routes
 router.post("/register", validationMiddleware(signUpEmailValidation), studentRegister);
 router.post("/verify-email", verifyEmail);
-router.post("/login", studentLogin);
+// router.post("/login", studentLogin);
+router.post("/login", login);
 router.post("/add-student-plan/:studentId", addStudentPlan);
 router.get('/:studentId/profile', authenticateToken, getStudentProfile);
 router.put("/:studentId/change-password", validationMiddleware(changePasswordValidation), changePassword);

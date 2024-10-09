@@ -1,4 +1,5 @@
 const Tutor = require("../models/tutorSchema");
+const Student = require("../models/studentSchema")
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -7,6 +8,7 @@ const {
     generateVerificationCode,
     sendVerificationEmail,
 } = require("../utils/studentEmailVerification");
+const { required } = require("joi");
 
 const tutorRegister = async (req, res) => {
     const {
@@ -302,13 +304,13 @@ const updateTutorProfile = async (req, res) => {
 
     console.log("Updating tutor with ID:", tutorId);
     console.log("Received data:", req.body);
-  
+
     try {
         const tutor = await Tutor.findById(tutorId);
         if (!tutor) {
             return res.status(404).send({ message: "Tutor not found" });
         }
-  
+
         // Update tutor details
         tutor.name = name || tutor.name;
         tutor.address = address || tutor.address;
@@ -318,13 +320,68 @@ const updateTutorProfile = async (req, res) => {
         tutor.phone = phone || tutor.phone;
 
         await tutor.save();
-  
+
         res.status(200).send({ message: "Tutor profile updated successfully" });
     } catch (error) {
         console.error('Error updating tutor profile:', error);
         res.status(400).send({ message: error.message });
     }
 };
+
+const login = async (req, res) => {
+    const { email, password } = req.body;
+
+    try {
+        if (!email || !password) {
+            return res.status(400).send({ message: "Email and password are required." });
+        }
+
+        // Check both student and tutor models
+        let user = await Student.findOne({ email });
+        let role = "student";
+
+        if (!user) {
+            user = await Tutor.findOne({ email });
+            role = "tutor";
+        }
+
+        if (!user) {
+            return res.status(400).send({ message: "Invalid email or password." });
+        }
+
+        if (!user.password) {
+            return res.status(500).send({ message: "Password is not set for this user." });
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(400).send({ message: "Invalid email or password." });
+        }
+
+        if (!user.isEmailVerify) {
+            return res.status(400).send({ message: "Please verify your email." });
+        }
+
+        const token = jwt.sign(
+            { id: user._id, email: user.email, role: role },
+            process.env.JWT_SECRET,
+            { expiresIn: "7d" }
+        );
+
+        res.status(200).send({
+            message: "Login successful.",
+            role,
+            token,
+        });
+    } catch (error) {
+        console.error("Login error:", error);
+        res.status(500).send({ error: "Server error. Please try again later." });
+    }
+};
+
+// Updated single route for login
+
+
 
 
 
@@ -344,5 +401,6 @@ module.exports = {
     getAllTutors,
     getTutorById,
     editTutorProfile,
-    updateTutorProfile
+    updateTutorProfile,
+    login
 };
